@@ -1,0 +1,240 @@
+'''Semantic Similarity: starter code
+
+Author: Michael Guerzhoy, Lauren Altomare Last modified: Nov. 18, 2022.
+Started: December 3rd, 2022
+First version complete: December 4th, 2022
+'''
+
+import math
+
+
+def norm(vec):
+    '''Return the norm of a vector stored as a dictionary, as
+    described in the handout for Project 3.
+    '''
+    sum_of_squares = 0.0
+    for x in vec:
+        sum_of_squares += vec[x] * vec[x]
+
+    return math.sqrt(sum_of_squares)
+
+#vec1 = {"a": 1, "b": 2, "c": 3}
+#vec2 = {"b": 4, "c": 5, "d": 6}
+#text = ["test1.txt", "test2.txt", "test3.txt"]
+#text3 =  ["sw.txt", "wp.txt"]
+#text2 =  ["text3.txt", "text4.txt", "text5.txt", "text6.txt"]
+
+def cosine_similarity(vec1, vec2):
+    '''Returns the cosine similarity between the sparse vectors vec1 and vec2 stored as dictionaries'''
+    dot_prod = 0
+    vec1_mag = 0
+    vec2_mag = 0
+
+    #find similar keys to process dot product
+
+    #finds dot product
+    for key in vec1:
+        if key in vec2:
+            dot_prod += vec1[key] * vec2[key]
+
+    #calculate magnitude of vector 1
+    for key in vec1:
+        vec1_mag += vec1[key]**2
+
+    #calculate magnitude of vector 2
+    for key in vec2:
+        vec2_mag += vec2[key]**2
+
+    #calculate cosine similarity
+    cos_sim = dot_prod / math.sqrt(vec1_mag * vec2_mag)
+
+    return cos_sim
+
+def same_words(word1, word2):
+    '''Returns True if two words are the same, and False if the words are different'''
+
+    if word1 == word2:
+        return True
+    else:
+        return False
+
+sent = [["i", "am", "a", "sick", "man"],
+["i", "am", "a", "spiteful", "man"],
+["i", "am", "an", "unattractive", "man"],
+["i", "believe", "my", "liver", "is", "diseased"],
+["however", "i", "know", "nothing", "at", "all", "about", "my",
+"disease", "and", "do", "not", "know", "for", "certain", "what", "ails", "me"]]
+
+def build_semantic_descriptors(sentences):
+    '''Takes in a list of lists of sentences and returns a dictionary d such that for every word w that apperas in at least one of the sentences d[w] is itself a dictionary which represents the semantic descriptor of w'''
+
+    full_dict = {}
+
+    #runs through each sentence of the list
+    for i in range(len(sentences)):
+
+        #using set to remove repeated words
+        cur_sent = list(set(sentences[i]))
+
+        #runs through each word in the sentence
+        for x in range(len(cur_sent)):
+            #checks to see if the current word is in the dictionary
+
+            if cur_sent[x] in full_dict.keys():
+
+                #updates word count of the dictionary
+
+                #could create a separate function for this
+                #iterates through each word in the sentence
+                for j in range(len(cur_sent)):
+
+                    #check if word is in dictionary
+                    if cur_sent[j] in full_dict[cur_sent[x]] and (same_words(cur_sent[j], cur_sent[x]) == False):
+
+                        full_dict[cur_sent[x]][cur_sent[j]] += 1
+
+                    elif cur_sent[j] not in full_dict[cur_sent[x]] and (same_words(cur_sent[j], cur_sent[x]) == False):
+
+                        #create new word in the dictionary
+
+                        new_vec = {cur_sent[j]: 1}
+                        full_dict[cur_sent[x]].update(new_vec)
+
+            else:#if word is not in the dictionary
+
+                #adds new word to the entire dictionary
+                new_word = {cur_sent[x]: {}}
+                full_dict.update(new_word)
+
+                #could create a separate function for this
+                #iterates through each word in the sentence
+                for j in range(len(cur_sent)):
+
+                    #check if word is in dictionary
+                    if cur_sent[j] in full_dict[cur_sent[x]] and (same_words(cur_sent[j], cur_sent[x]) == False):
+                        full_dict[cur_sent[x]][cur_sent[j]] += 1
+
+                    elif cur_sent[j] not in full_dict[cur_sent[x]] and (same_words(cur_sent[j], cur_sent[x]) == False):
+
+                        #create new word in the dictionary
+                        new_vec = {cur_sent[j]: 1}
+                        full_dict[cur_sent[x]].update(new_vec)
+    return full_dict
+
+### done note: special characters may or may not be a problem
+def build_semantic_descriptors_from_files(filenames):
+    ''' Takes the list of strings filenames which contains the names of files and returns a dictionary of the semantic descriptors of all the words in the files filenames with the files treated as a single text. '''
+
+    #creates string containing all text files
+    text_file = ""
+
+    for i in range(len(filenames)):
+        text_file += open(filenames[i], "r", encoding="utf-8").read().lower() + " "
+
+    #removing punctutation from the text and replacing with spaces/periods
+    text_file = text_file.replace("?", ".")
+    text_file = text_file.replace("!", ".")
+    text_file = text_file.replace(",", " ")
+    text_file = text_file.replace(";", " ")
+    text_file = text_file.replace("--", " ")
+    text_file = text_file.replace("-", " ")
+    text_file = text_file.replace(":", " ")
+    text_file = text_file.replace("(", " ")
+    text_file = text_file.replace(")", " ")
+    text_file = text_file.replace("'", " ")
+    text_file = text_file.replace('"', " ")
+
+    text_file = text_file.split(".")#could be problematic if there isn't a space after
+
+    list_words = []
+    #iterates through each sentence of the file
+    for u in range(len(text_file)-1):
+        list_words.append(text_file[u].split())
+
+    #calls on past function to create semantic descriptors
+    semantic_des = build_semantic_descriptors(list_words)
+
+    return semantic_des
+#print(build_semantic_descriptors_from_files(text))
+
+
+def most_similar_word(word, choices, semantic_descriptors, similarity_fn):
+    ''' Takes in a string word, a list of strings, choices, and a dictionary, semantic_descriptors, and returns the element of choices which has the largest semantic similarity to the word, with the semantic simililarity computed using the dictionary and the similarity function, similarity_fn. If the semantic similarity cannot be computed, it's considered to be -1. If there is a tie between words, the element with the smallest index is returned. '''
+
+    #use similarity_fn as cosine_similarity
+
+    # get the word, get the corresponding vectors for each word
+    #iterate through the dictionary corresponding to the words
+    #store the similarity
+    #update the similarity if it's greater than the score
+    #returns the word with the greatest similarity
+
+    #most_sim = ""
+    #sim_score = 0
+    #last_sim_score = 0
+
+    if word not in semantic_descriptors.keys():
+        return choices[0] #not sure if this is the right statement, ask
+    else:
+        vec_word = semantic_descriptors[word]
+
+        #stores the value and the word with the highest similarity
+        best_word = [choices[0], -1]
+
+    #iterates through the words in choices
+    for i in range(len(choices)):
+
+        #if the choice isn't in the semantic descriptors
+        if choices[i] not in semantic_descriptors:
+            sim_score = -1 #score is -1
+        else:
+            #uses function to calculate the similarity
+            sim_score = similarity_fn(vec_word, semantic_descriptors[choices[i]])
+
+        # if the current score is greater than the previously stored score
+        if sim_score > best_word[1]:
+            best_word[0] = choices[i]  #updates current word
+            best_word[1] = sim_score   #updates current score
+
+        #if the score is equal to the previous score
+        elif sim_score == best_word[1]:
+
+            #returns word with lower index
+            if i < choices.index(best_word[0]):
+                best_word[0] = choices[i]
+
+    return best_word[0]
+
+#print(most_similar_word("cat", ["hello", "dog", "know", "say", "sure", "the", "you"], build_semantic_descriptors_from_files(text), cosine_similarity))
+
+
+
+def run_similarity_test(filename, semantic_descriptors, similarity_fn):
+    ''' Takes in a file, filename, and returns the percentage (as a float between 0 and 100.0) of questions on which most_similar_Word() guesses the answer correctly using the semantic descriptors stored in semantic_descriptors using the function similarity_fn.'''
+
+    score = 0
+
+    #converts question text into individual questions
+    questions = open(filename, "r", encoding="latin1").read().split("\n")
+
+    #loops through each questions
+    for i in range(len(questions)):
+
+        #splits the question into words
+        cur_question = questions[i].split()
+
+        #uses most_similiar word to determine the approximate word
+        exp_word = most_similar_word(cur_question[0], cur_question[2:], semantic_descriptors, similarity_fn)
+
+        actual_word = cur_question[1]
+
+        #adds 1 to the score if the actual_word is the same as the calculated word
+        if exp_word == actual_word:
+            score += 1
+
+    #calculate percentage
+    percent = score/len(questions) * 100
+
+    return percent
+
+#print(run_similarity_test("test.txt", build_semantic_descriptors_from_files(text2), cosine_similarity))
